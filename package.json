@@ -1,0 +1,48 @@
+{
+  "name": "clips",
+  "version": "2.0.0",
+  "description": "Autonomous AI pipeline converting long-form videos into viral vertical clips with animated captions",
+  "author": "BKiran27 <basavakiran27@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BKiran27/ClipForge.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "pipeline": "bun run src/index.ts pipeline",
+    "batch": "bun run src/index.ts batch",
+    "resume": "bun run src/index.ts resume",
+    "status": "bun run src/index.ts status",
+    "clean": "bun run src/index.ts clean",
+    "serve": "bun run src/index.ts serve",
+    "setup-assets": "bun run src/index.ts setup-assets",
+    "test": "bun test",
+    "test:unit": "bun test tests/utils tests/pipeline",
+    "test:e2e": "bun test tests/modules",
+    "lint": "oxlint",
+    "format": "oxfmt --write src tests",
+    "format:check": "oxfmt --check src tests"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "@remotion/bundler": "^4.0.436",
+    "@remotion/cli": "^4.0.436",
+    "@remotion/renderer": "^4.0.436",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "chalk": "^5.4.1",
+    "commander": "^13.1.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "remotion": "^4.0.436",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.10",
+    "oxfmt": "^0.41.0",
+    "oxlint": "^1.56.0",
+    "typescript": "^5.9.3"
+  }
+}

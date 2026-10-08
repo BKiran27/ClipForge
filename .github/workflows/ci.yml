@@ -1,0 +1,48 @@
+name: Clips CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install System Dependencies (FFmpeg)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python Tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install yt-dlp youtube-transcript-api faster-whisper
+
+      - name: Install Bun Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check Code Formatting
+        run: bun run format:check
+
+      - name: Run Linter (oxlint)
+        run: bun run lint
+
+      - name: Run Unit & Pipeline Tests
+        run: bun test tests/pipeline tests/utils

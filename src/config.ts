@@ -1,0 +1,52 @@
+import { z } from "zod";
+
+const configSchema = z.object({
+  geminiApiKey: z.string().default(() => Bun.env.GEMINI_API_KEY || ""),
+  geminiModel: z.string().default("gemini-2.0-flash"),
+  whisperModel: z.enum(["tiny", "base", "small", "medium", "large"]).default("base"),
+  maxParallelClips: z.coerce.number().int().min(1).max(10).default(3),
+  silenceThresholdDb: z.coerce.number().default(-35),
+  silenceMinDuration: z.coerce.number().default(0.8),
+  outputWidth: z.coerce.number().default(1080),
+  outputHeight: z.coerce.number().default(1920),
+  clipSpeed: z.coerce.number().min(1).max(2).default(1.2),
+  maxClips: z.coerce.number().int().min(0).default(0),
+  preferYouTubeTranscripts: z.coerce.boolean().default(true),
+  captionAnimate: z.coerce.boolean().default(true),
+  captionTheme: z.enum(["hormozi", "mrbeast", "neon", "minimal"]).default("hormozi"),
+  ytCookiesBrowser: z.string().optional(),
+  layout: z.enum(["auto", "split-screen", "blur-background", "center-crop"]).default("auto"),
+  paths: z
+    .object({
+      data: z.string().default("./data"),
+      output: z.string().default("./output"),
+      assets: z.string().default("./assets"),
+      subwaySurfers: z.string().default("./assets/subway-surfers"),
+      checkpointDb: z.string().default("./data/checkpoints.db"),
+    })
+    .default({}),
+});
+
+export type Config = z.infer<typeof configSchema>;
+
+export function loadConfig(overrides?: Partial<Config>): Config {
+  return configSchema.parse({
+    geminiApiKey: Bun.env.GEMINI_API_KEY,
+    geminiModel: Bun.env.GEMINI_MODEL,
+    whisperModel: Bun.env.WHISPER_MODEL,
+    maxParallelClips: Bun.env.MAX_PARALLEL_CLIPS,
+    silenceThresholdDb: Bun.env.SILENCE_THRESHOLD_DB,
+    silenceMinDuration: Bun.env.SILENCE_MIN_DURATION,
+    outputWidth: Bun.env.OUTPUT_WIDTH,
+    outputHeight: Bun.env.OUTPUT_HEIGHT,
+    clipSpeed: Bun.env.CLIP_SPEED,
+    maxClips: Bun.env.MAX_CLIPS,
+    preferYouTubeTranscripts: Bun.env.PREFER_YOUTUBE_TRANSCRIPTS,
+    captionAnimate: Bun.env.CAPTION_ANIMATE,
+    captionTheme: Bun.env.CAPTION_THEME,
+    ytCookiesBrowser: Bun.env.YT_COOKIES_BROWSER,
+    layout: Bun.env.LAYOUT,
+    paths: {},
+    ...overrides,
+  });
+}
