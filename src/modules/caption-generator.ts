@@ -136,8 +136,10 @@ export class CaptionGenerator {
 import json, sys
 sys.stdout.reconfigure(encoding='utf-8')
 from faster_whisper import WhisperModel
-model = WhisperModel("${config.whisperModel}", device="cpu", compute_type="int8")
-segments, _ = model.transcribe(r"${wavPath}", word_timestamps=True, language="en")
+model_name = sys.argv[1]
+audio_path = sys.argv[2]
+model = WhisperModel(model_name, device="cpu", compute_type="int8")
+segments, _ = model.transcribe(audio_path, word_timestamps=True, language="en")
 words = []
 for s in segments:
     if s.words:
@@ -151,7 +153,7 @@ for s in segments:
             words.append({"word": part, "start": round(s.start, 3), "end": round(s.end, 3)})
 print(json.dumps(words))
 `;
-      const proc = Bun.spawn([pythonBin, "-c", script], {
+      const proc = Bun.spawn([pythonBin, "-c", script, config.whisperModel, wavPath], {
         stdout: "pipe",
         stderr: "pipe",
         env: { ...process.env, PYTHONIOENCODING: "utf-8" },

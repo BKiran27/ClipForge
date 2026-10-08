@@ -36,7 +36,7 @@ export class Transcriber {
 import json, sys
 sys.stdout.reconfigure(encoding='utf-8')
 from youtube_transcript_api import YouTubeTranscriptApi
-video_id = "${metadata.videoId}"
+video_id = sys.argv[1]
 try:
     ytt = YouTubeTranscriptApi()
     fetched = ytt.fetch(video_id)
@@ -54,7 +54,7 @@ except Exception as e:
 `;
 
     try {
-      const proc = Bun.spawn([pythonBin, "-c", script], {
+      const proc = Bun.spawn([pythonBin, "-c", script, metadata.videoId], {
         stdout: "pipe",
         stderr: "pipe",
         env: { ...process.env, PYTHONIOENCODING: "utf-8" },
@@ -134,8 +134,10 @@ except Exception as e:
 import json, sys
 sys.stdout.reconfigure(encoding='utf-8')
 from faster_whisper import WhisperModel
-model = WhisperModel("${config.whisperModel}", device="cpu", compute_type="int8")
-segments_gen, info = model.transcribe(r"${metadata.filePath}", language="en")
+model_name = sys.argv[1]
+audio_path = sys.argv[2]
+model = WhisperModel(model_name, device="cpu", compute_type="int8")
+segments_gen, info = model.transcribe(audio_path, language="en")
 out = []
 for s in segments_gen:
     out.append({"text": s.text.strip(), "start": s.start, "end": s.end, "duration": s.end - s.start})
@@ -143,11 +145,14 @@ print(json.dumps(out))
 `;
 
     try {
-      const proc = Bun.spawn([pythonBin, "-c", fasterScript], {
-        stdout: "pipe",
-        stderr: "pipe",
-        env: { ...process.env, PYTHONIOENCODING: "utf-8" },
-      });
+      const proc = Bun.spawn(
+        [pythonBin, "-c", fasterScript, config.whisperModel, metadata.filePath],
+        {
+          stdout: "pipe",
+          stderr: "pipe",
+          env: { ...process.env, PYTHONIOENCODING: "utf-8" },
+        },
+      );
       const stdout = await new Response(proc.stdout).text();
       const exitCode = await proc.exited;
       if (exitCode === 0 && stdout.trim()) {
@@ -167,17 +172,22 @@ print(json.dumps(out))
     const whisperScript = `
 import whisper, json, sys
 sys.stdout.reconfigure(encoding='utf-8')
-model = whisper.load_model("${config.whisperModel}")
-result = model.transcribe(r"${metadata.filePath}", language="en")
+model_name = sys.argv[1]
+audio_path = sys.argv[2]
+model = whisper.load_model(model_name)
+result = model.transcribe(audio_path, language="en")
 segments = [{"text": s["text"].strip(), "start": s["start"], "end": s["end"], "duration": s["end"] - s["start"]} for s in result["segments"]]
 print(json.dumps(segments))
 `;
 
-    const proc = Bun.spawn([pythonBin, "-c", whisperScript], {
-      stdout: "pipe",
-      stderr: "pipe",
-      env: { ...process.env, PYTHONIOENCODING: "utf-8" },
-    });
+    const proc = Bun.spawn(
+      [pythonBin, "-c", whisperScript, config.whisperModel, metadata.filePath],
+      {
+        stdout: "pipe",
+        stderr: "pipe",
+        env: { ...process.env, PYTHONIOENCODING: "utf-8" },
+      },
+    );
     const stdout = await new Response(proc.stdout).text();
     const stderr = await new Response(proc.stderr).text();
     const exitCode = await proc.exited;

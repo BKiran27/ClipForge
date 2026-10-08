@@ -224,6 +224,48 @@ export class CheckpointManager {
       .run(now, runId);
   }
 
+  getAllStageResults(runId: string): StageResult[] {
+    const rows = this.db
+      .prepare("SELECT * FROM stage_results WHERE run_id = ? ORDER BY id ASC")
+      .all(runId) as any[];
+    return rows.map((row) => ({
+      stage: row.stage as PipelineStage,
+      status: row.status as StageStatus,
+      startedAt: row.started_at,
+      completedAt: row.completed_at,
+      artifactPaths: JSON.parse(row.artifact_paths || "[]"),
+      data: JSON.parse(row.data || "{}"),
+      error: row.error,
+    }));
+  }
+
+  getAllClipProgress(runId: string): Array<{
+    id: string;
+    clipIndex: number;
+    stage: PipelineStage;
+    status: string;
+    artifactPaths: Record<string, string>;
+    updatedAt: string;
+  }> {
+    const rows = this.db
+      .prepare("SELECT * FROM clip_progress WHERE run_id = ? ORDER BY clip_index ASC")
+      .all(runId) as any[];
+    return rows.map((r) => ({
+      id: r.id,
+      clipIndex: r.clip_index,
+      stage: r.current_stage as PipelineStage,
+      status: r.status,
+      artifactPaths: JSON.parse(r.artifact_paths || "{}"),
+      updatedAt: r.updated_at,
+    }));
+  }
+
+  deleteRun(runId: string): void {
+    this.db.prepare("DELETE FROM clip_progress WHERE run_id = ?").run(runId);
+    this.db.prepare("DELETE FROM stage_results WHERE run_id = ?").run(runId);
+    this.db.prepare("DELETE FROM pipeline_runs WHERE id = ?").run(runId);
+  }
+
   close() {
     this.db.close();
   }

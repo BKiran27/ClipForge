@@ -54,9 +54,12 @@ export class PipelineOrchestrator {
     this.clipIdentifier = new ClipIdentifier(config);
   }
 
-  async run(videoUrl: string, _fromStage?: PipelineStage): Promise<string> {
+  async run(videoUrl: string, _fromStage?: PipelineStage, existingRunId?: string): Promise<string> {
     const videoId = this.extractVideoId(videoUrl);
-    const run = this.checkpoint.createRun(videoUrl, videoId, "");
+    const run = existingRunId
+      ? (this.checkpoint.getRunInfo(existingRunId) ??
+        this.checkpoint.createRun(videoUrl, videoId, ""))
+      : this.checkpoint.createRun(videoUrl, videoId, "");
     const dir = runDir(this.config.paths.data, run.id);
 
     log.info(`Pipeline started: ${run.id}`);
