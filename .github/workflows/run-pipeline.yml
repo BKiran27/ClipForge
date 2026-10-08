@@ -1,0 +1,74 @@
+name: Run ClipForge Pipeline (Cloud Runner)
+
+on:
+  workflow_dispatch:
+    inputs:
+      youtube_url:
+        description: 'YouTube Video URL to extract clips from'
+        required: true
+        type: string
+        default: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+      layout:
+        description: 'Layout style for vertical composition'
+        required: false
+        type: choice
+        default: 'blur-background'
+        options:
+          - blur-background
+          - split-screen
+          - center-crop
+      max_clips:
+        description: 'Maximum clips to extract (0 = all)'
+        required: false
+        type: string
+        default: '2'
+
+jobs:
+  run-pipeline:
+    name: Extract Viral Clips
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install System Dependencies (FFmpeg)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python Tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install yt-dlp youtube-transcript-api faster-whisper
+
+      - name: Install Bun Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Ensure Gameplay Assets (for split-screen)
+        run: bun run setup-assets
+
+      - name: Run ClipForge Pipeline
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          bun run src/index.ts pipeline "${{ inputs.youtube_url }}" \
+            --layout "${{ inputs.layout }}" \
+            --max-clips "${{ inputs.max_clips }}"
+
+      - name: Upload Extracted Clips as Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: viral-clips
+          path: output/
+          retention-days: 14

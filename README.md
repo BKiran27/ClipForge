@@ -166,16 +166,34 @@ bun run start clean <run-id>
 
 ---
 
-## 🐳 Docker & Cloud Hosting
+## 🚀 Deploy & Run Through Git
 
-You can run Clips Studio anywhere using Docker (VPS, Railway, Render, Fly.io):
+You can run and deploy **ClipForge** entirely through Git without running it on your personal computer:
+
+### 1. Run Pipeline in the Cloud via GitHub Actions (Zero Local Setup)
+You can extract clips directly using GitHub's cloud runners:
+1. Go to your repository's **[Actions Tab](https://github.com/BKiran27/ClipForge/actions)**.
+2. Select **"Run ClipForge Pipeline (Cloud Runner)"**.
+3. Click **"Run workflow"** and enter your YouTube video URL, layout, and number of clips.
+4. *(One-time)*: Add your `GEMINI_API_KEY` under **Repo Settings → Secrets and variables → Actions**.
+5. Once complete, download the generated 9:16 vertical MP4 reels under the workflow **Artifacts** section!
+
+### 2. 1-Click Cloud Web Studio Deployment (Render / Railway)
+Deploy the live ClipForge Web Studio dashboard directly from your Git repository:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/BKiran27/ClipForge)
+
+Or deploy with **Railway**:
+1. Connect your GitHub account and import `https://github.com/BKiran27/ClipForge`.
+2. Add environment variable `GEMINI_API_KEY`.
+3. Railway automatically detects the [Dockerfile](file:///c:/Users/basav/OneDrive/Desktop/clips/Dockerfile) and provisions a live HTTPS dashboard.
+
+### 3. Deploy via GitHub Container Registry (GHCR)
+Every commit to `main` builds and publishes a multi-platform production image:
 
 ```bash
-# Build Docker image
-docker build -t clips-studio .
-
-# Run container
-docker run -p 3000:3000 -e GEMINI_API_KEY="your_api_key" clips-studio
+# Pull and run the latest container from GitHub Packages
+docker run -p 3000:3000 -e GEMINI_API_KEY="your_api_key" ghcr.io/bkiran27/clipforge:latest
 ```
 
 Access the studio at `http://localhost:3000`.

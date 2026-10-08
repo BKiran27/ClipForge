@@ -466,8 +466,10 @@ export function startWebServer(port: number = 3000) {
 </body>
 </html>`;
 
+  const listenPort = parseInt(process.env.PORT || String(port), 10);
   const server = Bun.serve({
-    port,
+    port: listenPort,
+    hostname: "0.0.0.0",
     async fetch(req) {
       const url = new URL(req.url);
 

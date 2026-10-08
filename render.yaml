@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: clipforge-studio
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: starter
+    region: oregon
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PORT
+        value: 3000
