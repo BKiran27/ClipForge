@@ -1159,6 +1159,23 @@ export function startWebServer(port: number = 3000) {
           if (body.geminiApiKey) {
             process.env.GEMINI_API_KEY = body.geminiApiKey;
             config = loadConfig({ geminiApiKey: body.geminiApiKey });
+            try {
+              const envPath = join(process.cwd(), ".env");
+              let envText = (await Bun.file(envPath).exists())
+                ? await Bun.file(envPath).text()
+                : "";
+              if (/^GEMINI_API_KEY=.*$/m.test(envText)) {
+                envText = envText.replace(
+                  /^GEMINI_API_KEY=.*$/m,
+                  `GEMINI_API_KEY=${body.geminiApiKey}`,
+                );
+              } else {
+                envText += `\nGEMINI_API_KEY=${body.geminiApiKey}\n`;
+              }
+              await Bun.write(envPath, envText);
+            } catch {
+              // ignore disk persistence error
+            }
           }
           return Response.json({ success: true });
         } catch (err) {
