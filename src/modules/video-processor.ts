@@ -292,14 +292,20 @@ export class VideoProcessor {
     const h = config.outputHeight;
     const speed = config.clipSpeed || 1.2;
     const hasCaptions = captionOverlayPath && (await fileExists(captionOverlayPath));
+    const probe = await runFfprobe(clipPath);
+    const hasAudio = Boolean(probe.audioCodec);
 
     log.info(`Composing blur-background reel (${w}x${h}, ${speed}x speed)...`);
+
+    const audioFilter = hasAudio
+      ? `[0:a]atempo=${speed}[afast]`
+      : `aevalsrc=0:d=${Math.max(1, probe.duration / speed)}[afast]`;
 
     let filterComplex =
       `[0:v]fps=30,setpts=PTS/${speed},scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},boxblur=20:5[bg];` +
       `[0:v]fps=30,setpts=PTS/${speed},scale=${w}:-2:force_original_aspect_ratio=decrease[fg];` +
       `[bg][fg]overlay=(W-w)/2:(H-h)/2[base];` +
-      `[0:a]atempo=${speed}[afast]`;
+      audioFilter;
 
     if (hasCaptions) {
       filterComplex +=
@@ -352,12 +358,18 @@ export class VideoProcessor {
     const h = config.outputHeight;
     const speed = config.clipSpeed || 1.2;
     const hasCaptions = captionOverlayPath && (await fileExists(captionOverlayPath));
+    const probe = await runFfprobe(clipPath);
+    const hasAudio = Boolean(probe.audioCodec);
 
     log.info(`Composing center-crop reel (${w}x${h}, ${speed}x speed)...`);
 
+    const audioFilter = hasAudio
+      ? `[0:a]atempo=${speed}[afast]`
+      : `aevalsrc=0:d=${Math.max(1, probe.duration / speed)}[afast]`;
+
     let filterComplex =
       `[0:v]fps=30,setpts=PTS/${speed},scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}[base];` +
-      `[0:a]atempo=${speed}[afast]`;
+      audioFilter;
 
     if (hasCaptions) {
       filterComplex +=

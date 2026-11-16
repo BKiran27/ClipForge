@@ -767,12 +767,12 @@ export function startWebServer(port: number = 3000) {
     <div class="modal-box">
       <h2>⚙️ System & AI Settings</h2>
       <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-        Configure your Google Gemini API key and pipeline preferences.
+        Configure your Google Gemini API key. If left blank, ClipForge automatically uses its built-in Smart Heuristic Engine for viral clip extraction.
       </p>
 
       <div class="form-group">
-        <label for="apiKeyInput">Google Gemini API Key</label>
-        <input type="text" id="apiKeyInput" placeholder="AIzaSy...">
+        <label for="apiKeyInput">Google Gemini API Key (Optional)</label>
+        <input type="text" id="apiKeyInput" placeholder="AIzaSy... (Leave empty for Smart Engine)">
         <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem;">
           Get a free API key at <a href="https://aistudio.google.com/" target="_blank" style="color: var(--accent);">Google AI Studio</a>.
         </div>
@@ -804,10 +804,10 @@ export function startWebServer(port: number = 3000) {
         const text = document.getElementById('aiStatusText');
         if (data.gemini) {
           pill.className = 'status-pill';
-          text.innerText = 'Gemini AI Connected';
+          text.innerText = 'Gemini AI Active';
         } else {
-          pill.className = 'status-pill warning';
-          text.innerText = 'Gemini Key Needed';
+          pill.className = 'status-pill';
+          text.innerText = 'Smart Engine Active';
         }
       } catch {
         // ignore
@@ -1261,20 +1261,15 @@ export function startWebServer(port: number = 3000) {
           }
 
           if (body.geminiApiKey) {
+            process.env.GEMINI_API_KEY = body.geminiApiKey;
             config = loadConfig({ geminiApiKey: body.geminiApiKey });
           }
 
-          if (!config.geminiApiKey) {
-            return Response.json(
-              {
-                error:
-                  "Google Gemini API Key is missing. Please configure it in Settings or set GEMINI_API_KEY environment variable.",
-              },
-              { status: 400 },
-            );
-          }
+          const geminiApiKey =
+            body.geminiApiKey || config.geminiApiKey || Bun.env.GEMINI_API_KEY || "";
 
           const activeConfig = loadConfig({
+            geminiApiKey,
             layout: (body.layout as any) || "blur-background",
             captionTheme: (body.captionTheme as any) || "hormozi",
             maxClips: body.maxClips ?? 3,
@@ -1293,6 +1288,7 @@ export function startWebServer(port: number = 3000) {
           runLogsMap.set(runId, [
             `[${new Date().toLocaleTimeString()}] Pipeline initialized for: ${body.url}`,
             `[${new Date().toLocaleTimeString()}] Layout: ${activeConfig.layout} | Theme: ${activeConfig.captionTheme} | Speed: ${activeConfig.clipSpeed}x`,
+            `[${new Date().toLocaleTimeString()}] AI Engine: ${geminiApiKey ? "Gemini AI" : "Built-in Smart Heuristic"}`,
           ]);
 
           // Run asynchronously in background with exact runId

@@ -148,10 +148,22 @@ export class PipelineOrchestrator {
     dir: string,
   ): Promise<VideoMetadata> {
     this.checkpoint.startStage(runId, PipelineStage.DOWNLOAD);
-    const downloadDir = join(dir, "downloads");
-    const metadata = await this.downloader.download(videoUrl, downloadDir);
-    this.checkpoint.completeStage(runId, PipelineStage.DOWNLOAD, [metadata.filePath], metadata);
-    return metadata;
+    try {
+      const downloadDir = join(dir, "downloads");
+      const metadata = await this.downloader.download(
+        videoUrl,
+        downloadDir,
+        this.config.ytCookiesBrowser,
+      );
+      if (metadata.title) {
+        this.checkpoint.updateVideoTitle(runId, metadata.title);
+      }
+      this.checkpoint.completeStage(runId, PipelineStage.DOWNLOAD, [metadata.filePath], metadata);
+      return metadata;
+    } catch (err) {
+      this.checkpoint.failStage(runId, PipelineStage.DOWNLOAD, String(err));
+      throw err;
+    }
   }
 
   private async stageTranscribe(
@@ -160,15 +172,20 @@ export class PipelineOrchestrator {
     dir: string,
   ): Promise<Transcript> {
     this.checkpoint.startStage(runId, PipelineStage.TRANSCRIBE);
-    const transcriptDir = join(dir, "transcripts");
-    const transcript = await this.transcriber.transcribe(metadata, transcriptDir, this.config);
-    this.checkpoint.completeStage(
-      runId,
-      PipelineStage.TRANSCRIBE,
-      [transcript.srtPath ?? ""],
-      transcript,
-    );
-    return transcript;
+    try {
+      const transcriptDir = join(dir, "transcripts");
+      const transcript = await this.transcriber.transcribe(metadata, transcriptDir, this.config);
+      this.checkpoint.completeStage(
+        runId,
+        PipelineStage.TRANSCRIBE,
+        transcript.srtPath ? [transcript.srtPath] : [],
+        transcript,
+      );
+      return transcript;
+    } catch (err) {
+      this.checkpoint.failStage(runId, PipelineStage.TRANSCRIBE, String(err));
+      throw err;
+    }
   }
 
   private async stageIdentifyClips(
@@ -178,12 +195,17 @@ export class PipelineOrchestrator {
     dir: string,
   ): Promise<ClipCandidate[]> {
     this.checkpoint.startStage(runId, PipelineStage.IDENTIFY_CLIPS);
-    const clips = await this.clipIdentifier.identify(transcript, metadata);
-    const clipsPath = join(dir, "clips.json");
-    await Bun.write(clipsPath, JSON.stringify(clips, null, 2));
-    this.checkpoint.completeStage(runId, PipelineStage.IDENTIFY_CLIPS, [clipsPath], clips);
-    log.info(`Identified ${clips.length} clips`);
-    return clips;
+    try {
+      const clips = await this.clipIdentifier.identify(transcript, metadata);
+      const clipsPath = join(dir, "clips.json");
+      await Bun.write(clipsPath, JSON.stringify(clips, null, 2));
+      this.checkpoint.completeStage(runId, PipelineStage.IDENTIFY_CLIPS, [clipsPath], clips);
+      log.info(`Identified ${clips.length} clips`);
+      return clips;
+    } catch (err) {
+      this.checkpoint.failStage(runId, PipelineStage.IDENTIFY_CLIPS, String(err));
+      throw err;
+    }
   }
 
   private async processClips(
@@ -316,25 +338,43 @@ export class PipelineOrchestrator {
       );
 
       const overlayPath = join(dir, "captions", `${clip.id}_captions.webm`);
-      artifacts.captionOverlayPath = await this.captionGenerator.generate(
-        artifacts.silenceRemovedPath,
-        overlayPath,
-        this.config,
-        clip.hookLine || clip.title,
-      );
+      try {
+        artifacts.captionOverlayPath = await this.captionGenerator.generate(
+          artifacts.silenceRemovedPath,
+          overlayPath,
+          this.config,
+          clip.hookLine || clip.title,
+        );
 
-      this.checkpoint.updateClipProgress(
-        runId,
-        clip.id,
-        clipIndex,
-        PipelineStage.GENERATE_CAPTIONS,
-        "completed",
-        {
-          extractedVideoPath: artifacts.extractedVideoPath,
-          silenceRemovedPath: artifacts.silenceRemovedPath,
-          captionOverlayPath: artifacts.captionOverlayPath,
-        },
-      );
+        this.checkpoint.updateClipProgress(
+          runId,
+          clip.id,
+          clipIndex,
+          PipelineStage.GENERATE_CAPTIONS,
+          "completed",
+          {
+            extractedVideoPath: artifacts.extractedVideoPath,
+            silenceRemovedPath: artifacts.silenceRemovedPath,
+            captionOverlayPath: artifacts.captionOverlayPath,
+          },
+        );
+      } catch (err) {
+        log.warn(
+          `Caption generation failed for clip "${clip.title}": ${err}. Proceeding without caption overlay.`,
+        );
+        artifacts.captionOverlayPath = "";
+        this.checkpoint.updateClipProgress(
+          runId,
+          clip.id,
+          clipIndex,
+          PipelineStage.GENERATE_CAPTIONS,
+          "skipped",
+          {
+            extractedVideoPath: artifacts.extractedVideoPath,
+            silenceRemovedPath: artifacts.silenceRemovedPath,
+          },
+        );
+      }
     }
 
     // Compose reel

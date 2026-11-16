@@ -106,6 +106,13 @@ export class CheckpointManager {
     }));
   }
 
+  updateVideoTitle(runId: string, videoTitle: string): void {
+    const now = new Date().toISOString();
+    this.db
+      .prepare("UPDATE pipeline_runs SET video_title = ?, updated_at = ? WHERE id = ?")
+      .run(videoTitle, now, runId);
+  }
+
   startStage(runId: string, stage: PipelineStage): void {
     const now = new Date().toISOString();
     this.db
@@ -213,7 +220,9 @@ export class CheckpointManager {
   markRunComplete(runId: string): void {
     const now = new Date().toISOString();
     this.db
-      .prepare("UPDATE pipeline_runs SET status = 'completed', updated_at = ? WHERE id = ?")
+      .prepare(
+        "UPDATE pipeline_runs SET status = 'completed', current_stage = 'COMPOSE_REEL', updated_at = ? WHERE id = ?",
+      )
       .run(now, runId);
   }
 

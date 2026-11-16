@@ -25,7 +25,20 @@ export class Transcriber {
       }
     }
 
-    return await this.fromWhisper(metadata, outputDir, config);
+    try {
+      return await this.fromWhisper(metadata, outputDir, config);
+    } catch (err) {
+      log.warn(
+        `Whisper transcription failed or no speech detected: ${err}. Proceeding with ambient transcript.`,
+      );
+      return {
+        source: "ambient",
+        language: "en",
+        segments: [],
+        fullText: "",
+        srtPath: null,
+      };
+    }
   }
 
   async fromYouTube(metadata: VideoMetadata, outputDir: string): Promise<Transcript> {

@@ -77,8 +77,8 @@ export class Downloader {
     const dlArgs = [
       ...ytCmd,
       "-f",
-      "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
-      "--remux-video",
+      "bestvideo[height<=1080]+bestaudio/best[height<=1080]/bestvideo+bestaudio/best",
+      "--merge-output-format",
       "mp4",
       "-o",
       outputPath,
@@ -96,14 +96,14 @@ export class Downloader {
     });
     let dlExit = await dlProc.exited;
 
-    // If cookies failed during download, retry without cookies
+    // Retry 1: If cookies failed during download, retry without cookies
     if (dlExit !== 0 && cookiesBrowser) {
       log.warn("Download with browser cookies failed. Retrying without cookies...");
       const retryArgs = [
         ...ytCmd,
         "-f",
-        "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
-        "--remux-video",
+        "bestvideo[height<=1080]+bestaudio/best[height<=1080]/bestvideo+bestaudio/best",
+        "--merge-output-format",
         "mp4",
         "-o",
         outputPath,
@@ -111,6 +111,24 @@ export class Downloader {
         videoUrl,
       ];
       dlProc = Bun.spawn(retryArgs, { stdout: "inherit", stderr: "pipe" });
+      dlExit = await dlProc.exited;
+    }
+
+    // Retry 2: If format matching failed, retry with best available single/combined stream
+    if (dlExit !== 0) {
+      log.warn("Standard format download failed. Retrying with universal fallback format...");
+      const fallbackArgs = [
+        ...ytCmd,
+        "-f",
+        "best/b",
+        "--merge-output-format",
+        "mp4",
+        "-o",
+        outputPath,
+        "--no-playlist",
+        videoUrl,
+      ];
+      dlProc = Bun.spawn(fallbackArgs, { stdout: "inherit", stderr: "pipe" });
       dlExit = await dlProc.exited;
     }
 
